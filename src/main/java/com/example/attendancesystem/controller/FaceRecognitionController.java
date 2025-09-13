@@ -60,7 +60,7 @@ public class FaceRecognitionController {
 
         // ✅ Load Haarcascade from resources
         try {
-            InputStream haarStream = getClass().getResourceAsStream("/haarcascade_frontalface_default.xml");
+            InputStream haarStream = getClass().getResourceAsStream("/haarcascade_frontalface_alt.xml");
             if (haarStream == null) {
                 throw new RuntimeException("⚠ Haarcascade file not found in resources!");
             }
