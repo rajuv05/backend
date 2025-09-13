@@ -17,6 +17,7 @@ import org.bytedeco.opencv.opencv_face.LBPHFaceRecognizer;
 import org.bytedeco.opencv.opencv_objdetect.CascadeClassifier;
 
 import java.io.*;
+import java.net.URL;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,7 +39,6 @@ public class FaceRecognitionController {
     private final String modelPath;
     private final String labelsPath;
     private final String trainingPath;
-    private final String haarPath;
     private final String facesBasePath;
 
     public FaceRecognitionController(AttendanceRepository attendanceRepository) {
@@ -50,7 +50,6 @@ public class FaceRecognitionController {
         this.trainingPath = Paths.get(facesBasePath, "training").toString();
         this.modelPath = Paths.get(facesBasePath, "trainer.yml").toString();
         this.labelsPath = Paths.get(facesBasePath, "labels.txt").toString();
-        this.haarPath = Paths.get(facesBasePath, "haarcascade_frontalface_default.xml").toString();
 
         new File(this.trainingPath).mkdirs();
 
@@ -60,11 +59,26 @@ public class FaceRecognitionController {
             loadLabels(labelsPath);
         }
 
-        faceDetector = new CascadeClassifier(haarPath);
-        if (faceDetector.empty()) {
-            System.err.println("❌ Haar Cascade not loaded at: " + haarPath);
-        } else {
-            System.out.println("✅ Haar Cascade loaded: " + haarPath);
+        // ✅ Load Haarcascade from resources
+        try {
+            URL resource = getClass().getClassLoader()
+                    .getResource("haarcascades/haarcascade_frontalface_default.xml");
+
+            if (resource == null) {
+                throw new RuntimeException("⚠ Haarcascade file not found in resources!");
+            }
+
+            String cascadePath = new File(resource.toURI()).getAbsolutePath();
+            faceDetector = new CascadeClassifier(cascadePath);
+
+            if (faceDetector.empty()) {
+                throw new RuntimeException("⚠ Haarcascade failed to load at " + cascadePath);
+            }
+
+            System.out.println("✅ Haarcascade loaded: " + cascadePath);
+
+        } catch (Exception e) {
+            throw new RuntimeException("❌ Error loading Haarcascade", e);
         }
     }
 
@@ -146,8 +160,8 @@ public class FaceRecognitionController {
             faceDetector.detectMultiScale(
                     imageGray,
                     facesDetected,
-                    1.05,   // tighter scale step
-                    7,      // higher minNeighbors (reduce background noise)
+                    1.05,
+                    7,
                     0,
                     new Size(80, 80),
                     new Size()
@@ -159,7 +173,7 @@ public class FaceRecognitionController {
                 return ResponseEntity.ok(response);
             }
 
-            Set<String> processedRolls = new HashSet<>(); // prevent duplicate marking
+            Set<String> processedRolls = new HashSet<>();
 
             for (int i = 0; i < facesDetected.size(); i++) {
                 Rect rect = facesDetected.get(i);
@@ -175,7 +189,6 @@ public class FaceRecognitionController {
                 StudentInfo matchedInfo = labelsMap.get(predictedLabel[0]);
 
                 if (matchedInfo != null && distance <= CONFIDENCE_THRESHOLD) {
-                    // prevent duplicate attendance in one frame
                     if (!processedRolls.contains(matchedInfo.getRollNo())) {
                         markAttendance(matchedInfo, distance, msg);
                         processedRolls.add(matchedInfo.getRollNo());
