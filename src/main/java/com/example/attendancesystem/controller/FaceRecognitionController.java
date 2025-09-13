@@ -17,7 +17,6 @@ import org.bytedeco.opencv.opencv_face.LBPHFaceRecognizer;
 import org.bytedeco.opencv.opencv_objdetect.CascadeClassifier;
 
 import java.io.*;
-import java.net.URL;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -61,21 +60,24 @@ public class FaceRecognitionController {
 
         // ✅ Load Haarcascade from resources
         try {
-            URL resource = getClass().getClassLoader()
-                    .getResource("haarcascades/haarcascade_frontalface_default.xml");
-
-            if (resource == null) {
+            InputStream haarStream = getClass().getResourceAsStream("/haarcascade_frontalface_default.xml");
+            if (haarStream == null) {
                 throw new RuntimeException("⚠ Haarcascade file not found in resources!");
             }
 
-            String cascadePath = new File(resource.toURI()).getAbsolutePath();
-            faceDetector = new CascadeClassifier(cascadePath);
-
-            if (faceDetector.empty()) {
-                throw new RuntimeException("⚠ Haarcascade failed to load at " + cascadePath);
+            // Copy to a temporary file because CascadeClassifier needs a real file path
+            File tempFile = File.createTempFile("haarcascade", ".xml");
+            tempFile.deleteOnExit();
+            try (OutputStream out = new FileOutputStream(tempFile)) {
+                haarStream.transferTo(out);
             }
 
-            System.out.println("✅ Haarcascade loaded: " + cascadePath);
+            faceDetector = new CascadeClassifier(tempFile.getAbsolutePath());
+            if (faceDetector.empty()) {
+                throw new RuntimeException("⚠ Haarcascade failed to load at " + tempFile.getAbsolutePath());
+            }
+
+            System.out.println("✅ Haarcascade loaded successfully");
 
         } catch (Exception e) {
             throw new RuntimeException("❌ Error loading Haarcascade", e);
