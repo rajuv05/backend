@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: attendance-backend
+    env: docker
+    plan: free
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://ep-little-glitter-adtel5y2-pooler.c-2.us-east-1.aws.neon.tech/attendance_db?sslmode=require
+      - key: SPRING_DATASOURCE_USERNAME
+        value: neondb_owner
+      - key: SPRING_DATASOURCE_PASSWORD
+        value: root
+      - key: JAVA_OPTS
+        value: "-Xmx512m -Xms256m"
